@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% block title %}{{ report.title }} - БукЛайф{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-chart-line"></i> {{ report.title }}</h1>
+    <div>
+        <a href="{% url 'merchandiser_report_export_pdf' report.id %}" class="btn btn-danger" target="_blank">
+            <i class="fas fa-file-pdf"></i> Экспорт в PDF
+        </a>
+        <a href="{% url 'merchandiser_reports' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> К списку отчетов
+        </a>
+        {% if report.status == 'active' %}
+            <a href="{% url 'merchandiser_report_archive' report.id %}" class="btn btn-warning" onclick="return confirm('Отправить отчет в архив?')">
+                <i class="fas fa-archive"></i> В архив
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">Информация об отчете</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <strong>Тип отчета:</strong> {{ report.get_report_type_display }}
+            </div>
+            <div class="col-md-3">
+                <strong>Период:</strong> {{ report.start_date|date:"d.m.Y" }} - {{ report.end_date|date:"d.m.Y" }}
+            </div>
+            <div class="col-md-3">
+                <strong>Статус:</strong> 
+                <span class="badge {% if report.status == 'active' %}bg-success{% else %}bg-secondary{% endif %}">
+                    {{ report.get_status_display }}
+                </span>
+            </div>
+            <div class="col-md-3">
+                <strong>Создан:</strong> {{ report.created_at|date:"d.m.Y H:i" }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Общая статистика</h5>
+            </div>
+            <div class="card-body">
+                {% if data and data.summary %}
+                    <p><strong>Выручка:</strong> {{ data.summary.total_revenue|floatformat:2 }} ₽</p>
+                    <p><strong>Количество заказов:</strong> {{ data.summary.total_orders_count }}</p>
+                    <p><strong>Период:</strong> {{ data.period.start_date }} - {{ data.period.end_date }}</p>
+                {% else %}
+                    <p class="text-muted">Нет данных для отображения</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Топ книг по продажам</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Книга</th>
+                                <th>Продано</th>
+                                <th>Выручка</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if data and data.books_sales %}
+                                {% for item in data.books_sales %}
+                                <tr>
+                                    <td>{{ item.book_title }}</a>
+                                    <td>{{ item.sales_count }} шт.</a>
+                                    <td>{{ item.revenue|floatformat:2 }} ₽</a>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">Нет продаж за выбранный период</a>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center">Нет данных о продажах</a>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-white">
+                <h5 class="mb-0">Продажи по жанрам</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Жанр</th>
+                                <th>Продано</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if data and data.genre_sales %}
+                                {% for item in data.genre_sales %}
+                                <tr>
+                                    <td>{{ item.genre_name }}</a>
+                                    <td>{{ item.sales_count }} шт.</a>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" class="text-center">Нет продаж за выбранный период</a>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="2" class="text-center">Нет данных о продажах по жанрам</a>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Популярные книги (по просмотрам)</h5>
+            </div>
+            <div class="card-body">
+                {% if data and data.popular_books %}
+                    <ol>
+                        {% for book in data.popular_books %}
+                            <li>{{ book.book_title }} ({{ book.views_count }} просмотров)</li>
+                        {% endfor %}
+                    </ol>
+                {% else %}
+                    <p class="text-muted">Нет данных о просмотрах</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if data and data.daily_sales %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Динамика продаж по дням</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Выручка (₽)</th>
+                                <th>Количество заказов</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in data.daily_sales %}
+                            <tr>
+                                <td>{{ item.date }}</a>
+                                <td class="text-end">{{ item.revenue|floatformat:2 }}</a>
+                                <td class="text-end">{{ item.orders }}</a>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

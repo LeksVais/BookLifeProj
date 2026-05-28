@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% block title %}Корзина #{{ cart.id }} - БукЛайф{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-shopping-cart"></i> Корзина #{{ cart.id }}</h1>
+    <div>
+        <a href="{% url 'merchandiser_cart_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> К списку корзин
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Информация о пользователе -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-user"></i> Информация о пользователе</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Имя:</strong> {{ cart.user.get_full_name|default:"Не указано" }}</p>
+                        <p><strong>Логин:</strong> {{ cart.user.username }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Email:</strong> {{ cart.user.email }}</p>
+                        <p><strong>Телефон:</strong> 
+                            {% if cart.user.profile.phone %}
+                                {{ cart.user.profile.phone }}
+                            {% else %}
+                                Не указан
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Товары в корзине -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-boxes"></i> Товары в корзине ({{ cart.items.count }} шт.)</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Книга</th>
+                                <th>Авторы</th>
+                                <th>Цена</th>
+                                <th>Кол-во</th>
+                                <th>Сумма</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in cart.items.all %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.book.title }}</strong>
+                                    {% if item.book.cover_image %}
+                                        <br>
+                                        <img src="{{ item.book.cover_image.url }}" alt="{{ item.book.title }}" style="height: 50px; margin-top: 5px;">
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% for author in item.book.authors.all %}
+                                        {{ author.first_name }} {{ author.last_name }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td>{{ item.book.price }} ₽</td>
+                                <td>{{ item.quantity }}</td>
+                                <td><strong>{{ item.get_total_price|floatformat:2 }} ₽</strong></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">Корзина пуста</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>Итого:</strong></td>
+                                <td><strong class="text-danger">{{ cart.get_total|floatformat:2 }} ₽</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Информация о заказе -->
+        {% if cart.order %}
+        <div class="card mb-4">
+            <div class="card-header {% if cart.order.status == 'paid' %}bg-success{% else %}bg-warning{% endif %} text-white">
+                <h5 class="mb-0"><i class="fas fa-receipt"></i> Связанный заказ #{{ cart.order.id }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <p><strong>Статус заказа:</strong> 
+                            <span class="badge {% if cart.order.status == 'paid' %}bg-success{% else %}bg-warning{% endif %}">
+                                {{ cart.order.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <p><strong>Способ оплаты:</strong> {{ cart.order.payment_method }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p><strong>Дата заказа:</strong> {{ cart.order.order_date|date:"d.m.Y H:i" }}</p>
+                    </div>
+                </div>
+                {% if cart.order.payment_confirmed_at %}
+                <div class="row">
+                    <div class="col-12">
+                        <p><strong>Дата подтверждения оплаты:</strong> {{ cart.order.payment_confirmed_at|date:"d.m.Y H:i" }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Изменение статуса -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-tasks"></i> Управление статусом</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Текущий статус</label>
+                        <div class="mb-2">
+                            {% if cart.status == 'active' %}
+                                <span class="status-badge status-active">Активна</span>
+                            {% elif cart.status == 'ordered' %}
+                                <span class="status-badge status-ordered">Заказана</span>
+                            {% elif cart.status == 'paid' %}
+                                <span class="status-badge status-paid">Оплачена</span>
+                            {% elif cart.status == 'completed' %}
+                                <span class="status-badge status-completed">Завершена</span>
+                            {% elif cart.status == 'abandoned' %}
+                                <span class="status-badge status-abandoned">Заброшена</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Изменить статус на</label>
+                        <select name="status" id="status" class="form-control" required>
+                            {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if cart.status == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-save"></i> Обновить статус
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Информация о корзине -->
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Информация</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>ID корзины:</strong> {{ cart.id }}</p>
+                <p><strong>Дата создания:</strong> {{ cart.created_at|date:"d.m.Y H:i:s" }}</p>
+                <p><strong>Последнее обновление:</strong> {{ cart.updated_at|date:"d.m.Y H:i:s" }}</p>
+                <hr>
+                <p><strong>Всего товаров:</strong> {{ cart.items.count }}</p>
+                <p><strong>Общая сумма:</strong> <span class="text-danger h5">{{ cart.get_total|floatformat:2 }} ₽</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
